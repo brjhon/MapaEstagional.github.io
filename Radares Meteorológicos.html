@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radares Meteorológicos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            background: #1a1a1a;
+        }
+
+        .controls {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-radar {
+            background: #444;
+            color: #fff;
+        }
+
+        .btn-radar.active {
+            background: #00ff88;
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+
+        .btn-radar:hover:not(.active) {
+            background: #555;
+        }
+
+        .btn-toggle {
+            background: #ff6b00;
+            color: #fff;
+            margin-left: 20px;
+        }
+
+        .btn-toggle:hover {
+            background: #ff8533;
+        }
+
+        .controls.hidden {
+            transform: translateY(-100%);
+        }
+
+        .iframe-container {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .iframe-container.fullscreen {
+            top: 0;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none;
+        }
+
+        iframe.active {
+            display: block;
+        }
+
+        .status {
+            color: #00ff88;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls" id="controls">
+        <button class="btn btn-radar active" data-radar="1">Radar 1</button>
+        <button class="btn btn-radar" data-radar="2">Radar 2</button>
+        <button class="btn btn-toggle" id="toggleControls">Ocultar Controles</button>
+        <span class="status" id="status">Radar 1 Ativo</span>
+    </div>
+
+    <div class="iframe-container" id="container">
+        <iframe id="radar1" class="active" src="about:blank" title="Radar Meteorológico 1"></iframe>
+        <iframe id="radar2" src="about:blank" title="Radar Meteorológico 2"></iframe>
+    </div>
+
+    <script>
+        // Configuração dos radares - ALTERE AS URLs AQUI
+        const radarUrls = {
+            radar1: 'https://plataforma-clima.dados.rio/radar/mendanha/reflectivity/mapa', // Substitua pela URL do Radar 1
+            radar2: 'https://www.sistema-alerta-rio.com.br/upload/Mapa/mapaRadar.html'  // Substitua pela URL do Radar 2
+        };
+
+        // Elementos
+        const buttons = document.querySelectorAll('.btn-radar');
+        const iframes = document.querySelectorAll('iframe');
+        const status = document.getElementById('status');
+        const controls = document.getElementById('controls');
+        const toggleBtn = document.getElementById('toggleControls');
+        const container = document.getElementById('container');
+
+        // Estado atual
+        let activeRadar = 1;
+        let controlsVisible = true;
+
+        // Carrega as URLs nos iframes
+        document.getElementById('radar1').src = radarUrls.radar1;
+        document.getElementById('radar2').src = radarUrls.radar2;
+
+        // Recupera última seleção salva
+        const savedRadar = localStorage.getItem('activeRadar');
+        if (savedRadar) {
+            switchRadar(parseInt(savedRadar));
+        }
+
+        // Alterna entre radares
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const radarNum = parseInt(btn.dataset.radar);
+                switchRadar(radarNum);
+            });
+        });
+
+        function switchRadar(radarNum) {
+            activeRadar = radarNum;
+            
+            // Atualiza botões
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                if (parseInt(btn.dataset.radar) === radarNum) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Atualiza iframes
+            iframes.forEach(iframe => {
+                iframe.classList.remove('active');
+            });
+            document.getElementById(`radar${radarNum}`).classList.add('active');
+
+            // Atualiza status
+            status.textContent = `Radar ${radarNum} Ativo`;
+
+            // Salva preferência
+            localStorage.setItem('activeRadar', radarNum);
+        }
+
+        // Toggle dos controles
+        toggleBtn.addEventListener('click', () => {
+            controlsVisible = !controlsVisible;
+            
+            if (controlsVisible) {
+                controls.classList.remove('hidden');
+                container.classList.remove('fullscreen');
+                toggleBtn.textContent = 'Ocultar Controles';
+            } else {
+                controls.classList.add('hidden');
+                container.classList.add('fullscreen');
+                toggleBtn.textContent = 'Mostrar Controles';
+            }
+        });
+
+        // Atalhos de teclado
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '1') switchRadar(1);
+            if (e.key === '2') switchRadar(2);
+            if (e.key === 'h' || e.key === 'H') toggleBtn.click();
+        });
+    </script>
+</body>
+</html>
