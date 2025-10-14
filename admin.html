@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - Radares Meteorológicos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            color: #22d3ee;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: #22d3ee;
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: #06b6d4;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: #000;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 2px solid #10b981;
+            color: #10b981;
+        }
+
+        .alert-info {
+            background: rgba(34, 211, 238, 0.2);
+            border: 2px solid #22d3ee;
+            color: #22d3ee;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 1280px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .radar-preview {
+            background: rgba(15, 23, 42, 0.5);
+            border: 2px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .radar-preview.active {
+            border-color: #10b981;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
+        }
+
+        .preview-header {
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .preview-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            background: #10b981;
+            color: #000;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.online { background: #10b981; }
+        .status-dot.loading { background: #fbbf24; }
+        .status-dot.offline { background: #ef4444; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .iframe-container {
+            height: 400px;
+            background: #000;
+            position: relative;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .loading-overlay, .error-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(16, 185, 129, 0.2);
+            border-top-color: #10b981;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .preview-footer {
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #fff;
+            transition: all 0.2s;
+            font-size: 16px;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .config-section {
+            background: rgba(15, 23, 42, 0.5);
+            border: 2px solid #334155;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .config-section h2 {
+            color: #22d3ee;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="url"],
+        .form-group input[type="number"] {
+            width: 100%;
+            padding: 10px 12px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #22d3ee;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .save-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 18px;
+            margin-top: 30px;
+        }
+
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid #3b82f6;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .info-box h3 {
+            color: #60a5fa;
+            margin-bottom: 12px;
+        }
+
+        .info-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-box li {
+            padding: 8px 0;
+            color: #cbd5e1;
+        }
+
+        .info-box li:before {
+            content: "• ";
+            color: #3b82f6;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>⚙️ Painel Administrativo</h1>
+                <p style="color: #94a3b8; margin-top: 5px;">Gerenciamento de Radares Meteorológicos</p>
+            </div>
+            <div class="header-buttons">
+                <button class="btn btn-primary" onclick="openViewerNewTab()">
+                    🔗 Abrir em Nova Aba
+                </button>
+                <button class="btn btn-primary" onclick="openViewerNewWindow()">
+                    🪟 Abrir em Nova Janela
+                </button>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="alert alert-success" id="alertSaved">
+            ✓ Configurações salvas com sucesso!
+        </div>
+
+        <div class="alert alert-info" id="alertActivated">
+            ⚡ Radar ativado! O visualizador será atualizado automaticamente.
+        </div>
+
+        <!-- Preview dos Radares -->
+        <div class="grid">
+            <!-- Radar 1 -->
+            <div class="radar-preview" id="preview-radar1">
+                <div class="preview-header">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="preview-title">RADAR 1</span>
+                        <span class="badge" id="badge-radar1" style="display: none;">ATIVO</span>
+                    </div>
+                    <div class="status-indicator" id="status-radar1">
+                        <span class="status-dot loading"></span>
+                        <span>Carregando...</span>
+                    </div>
+                </div>
+                <div class="iframe-container">
+                    <div class="loading-overlay" id="loading-radar1">
+                        <div style="text-align: center;">
+                            <div class="spinner"></div>
+                            <p style="margin-top: 16px;">Carregando radar...</p>
+                        </div>
+                    </div>
+                    <div class="error-overlay" id="error-radar1" style="display: none;">
+                        <div style="text-align: center;">
+                            <p style="font-size: 48px; margin-bottom: 16px;">📡</p>
+                            <p style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Radar Offline</p>
+                            <p style="color: #94a3b8; margin-bottom: 16px;">Tentando reconectar...</p>
+                            <button class="btn btn-primary" onclick="forceReload('radar1')">
+                                Tentar Agora
+                            </button>
+                        </div>
+                    </div>
+                    <iframe id="iframe-radar1" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
+                </div>
+                <div class="preview-footer">
+                    <span id="name-radar1">Radar 1</span>
+                    <div class="preview-actions">
+                        <span id="time-radar1" style="color: #94a3b8; font-size: 12px; margin-right: 8px;"></span>
+                        <button class="btn-icon" onclick="forceReload('radar1')" title="Recarregar">🔄</button>
+                        <button class="btn-icon" onclick="setActive('radar1')" title="Ativar">⚡</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Radar 2 -->
+            <div class="radar-preview" id="preview-radar2">
+                <div class="preview-header">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="preview-title">RADAR 2</span>
+                        <span class="badge" id="badge-radar2" style="display: none;">ATIVO</span>
+                    </div>
+                    <div class="status-indicator" id="status-radar2">
+                        <span class="status-dot loading"></span>
+                        <span>Carregando...</span>
+                    </div>
+                </div>
+                <div class="iframe-container">
+                    <div class="loading-overlay" id="loading-radar2">
+                        <div style="text-align: center;">
+                            <div class="spinner"></div>
+                            <p style="margin-top: 16px;">Carregando radar...</p>
+                        </div>
+                    </div>
+                    <div class="error-overlay" id="error-radar2" style="display: none;">
+                        <div style="text-align: center;">
+                            <p style="font-size: 48px; margin-bottom: 16px;">📡</p>
+                            <p style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Radar Offline</p>
+                            <p style="color: #94a3b8; margin-bottom: 16px;">Tentando reconectar...</p>
+                            <button class="btn btn-primary" onclick="forceReload('radar2')">
+                                Tentar Agora
+                            </button>
+                        </div>
+                    </div>
+                    <iframe id="iframe-radar2" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
+                </div>
+                <div class="preview-footer">
+                    <span id="name-radar2">Radar 2</span>
+                    <div class="preview-actions">
+                        <span id="time-radar2" style="color: #94a3b8; font-size: 12px; margin-right: 8px;"></span>
+                        <button class="btn-icon" onclick="forceReload('radar2')" title="Recarregar">🔄</button>
+                        <button class="btn-icon" onclick="setActive('radar2')" title="Ativar">⚡</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configurações -->
+        <div class="grid">
+            <!-- Config Radar 1 -->
+            <div class="config-section">
+                <h2>⚙️ Configurações Radar 1</h2>
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="config-name-radar1" placeholder="Ex: Radar Mendanha">
+                </div>
+                <div class="form-group">
+                    <label>URL</label>
+                    <input type="url" id="config-url-radar1" placeholder="https://exemplo.com/radar">
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="config-auto-radar1">
+                    <label for="config-auto-radar1" style="margin: 0;">Atualização automática</label>
+                </div>
+                <div class="form-group">
+                    <label>Intervalo (minutos)</label>
+                    <input type="number" id="config-interval-radar1" min="1" max="60" value="5">
+                </div>
+            </div>
+
+            <!-- Config Radar 2 -->
+            <div class="config-section">
+                <h2>⚙️ Configurações Radar 2</h2>
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="config-name-radar2" placeholder="Ex: Radar Alerta Rio">
+                </div>
+                <div class="form-group">
+                    <label>URL</label>
+                    <input type="url" id="config-url-radar2" placeholder="https://exemplo.com/radar">
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="config-auto-radar2">
+                    <label for="config-auto-radar2" style="margin: 0;">Atualização automática</label>
+                </div>
+                <div class="form-group">
+                    <label>Intervalo (minutos)</label>
+                    <input type="number" id="config-interval-radar2" min="1" max="60" value="5">
+                </div>
+            </div>
+        </div>
+
+        <!-- Botão Salvar -->
+        <button class="btn btn-success save-btn" onclick="saveConfig()">
+            💾 Salvar Configurações
+        </button>
+
+        <!-- Info -->
+        <div class="info-box">
+            <h3>💡 Como usar:</h3>
+            <ul>
+                <li>Configure as URLs e nomes dos radares acima</li>
+                <li>Clique em ⚡ para definir qual radar será mostrado no visualizador</li>
+                <li>Use 🔄 para forçar recarregar um radar</li>
+                <li>Use 🔗 "Abrir em Nova Aba" para abrir o visualizador em outra aba do navegador</li>
+                <li>Use 🪟 "Abrir em Nova Janela" para abrir o visualizador em janela separada</li>
+                <li>Quando você clicar em ⚡ ou "Salvar", o visualizador atualiza automaticamente (em 2 segundos)</li>
+                <li>Os radares tentam reconectar automaticamente se ficarem offline</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Configuração padrão
+        const DEFAULT_CONFIG = {
+            radar1: {
+                name: 'Radar Mendanha',
+                url: 'https://plataforma-clima.dados.rio/radar/mendanha/reflectivity/mapa',
+                autoRefresh: true,
+                refreshInterval: 300000
+            },
+            radar2: {
+                name: 'Radar Alerta Rio',
+                url: 'https://www.sistema-alerta-rio.com.br/upload/Mapa/mapaRadar.html',
+                autoRefresh: true,
+                refreshInterval: 300000
+            },
+            global: {
+                activeRadar: 'radar1',
+                showStatusBar: true
+            }
+        };
+
+        let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+        let refreshTimers = {};
+        let retryTimers = {};
+
+        // Carrega config do localStorage
+        function loadConfig() {
+            const saved = localStorage.getItem('radarAdminConfig');
+            if (saved) {
+                try {
+                    config = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Erro ao carregar config:', e);
+                }
+            }
+            updateUI();
+        }
+
+        // Atualiza UI com config
+        function updateUI() {
+            ['radar1', 'radar2'].forEach(key => {
+                document.getElementById(`config-name-${key}`).value = config[key].name;
+                document.getElementById(`config-url-${key}`).value = config[key].url;
+                document.getElementById(`config-auto-${key}`).checked = config[key].autoRefresh;
+                document.getElementById(`config-interval-${key}`).value = config[key].refreshInterval / 60000;
+                document.getElementById(`name-${key}`).textContent = config[key].name;
+            });
+
+            updateActiveRadar();
+        }
+
+        // Atualiza visual do radar ativo
+        function updateActiveRadar() {
+            const activeRadar = config.global.activeRadar;
+            ['radar1', 'radar2'].forEach(key => {
+                const preview = document.getElementById(`preview-${key}`);
+                const badge = document.getElementById(`badge-${key}`);
+                if (key === activeRadar) {
+                    preview.classList.add('active');
+                    badge.style.display = 'inline-block';
+                } else {
+                    preview.classList.remove('active');
+                    badge.style.display = 'none';
+                }
+            });
+        }
+
+        // Define radar ativo
+        function setActive(radarKey) {
+            config.global.activeRadar = radarKey;
+            updateActiveRadar();
+            
+            // Notifica outras abas/janelas
+            localStorage.setItem('radarConfigUpdate', Date.now().toString());
+            
+            // Salva automaticamente
+            localStorage.setItem('radarAdminConfig', JSON.stringify(config));
+            
+            // Mostra alerta de ativação
+            const alert = document.getElementById('alertActivated');
+            alert.innerHTML = `⚡ ${config[radarKey].name} ativado! O visualizador será atualizado automaticamente.`;
+            alert.classList.add('show');
+            setTimeout(() => alert.classList.remove('show'), 3000);
+            
+            console.log(`✓ Radar ${radarKey} ativado`);
+        }
+
+        // Salva configurações
+        function saveConfig() {
+            ['radar1', 'radar2'].forEach(key => {
+                config[key].name = document.getElementById(`config-name-${key}`).value;
+                config[key].url = document.getElementById(`config-url-${key}`).value;
+                config[key].autoRefresh = document.getElementById(`config-auto-${key}`).checked;
+                config[key].refreshInterval = parseInt(document.getElementById(`config-interval-${key}`).value) * 60000;
+            });
+
+            localStorage.setItem('radarAdminConfig', JSON.stringify(config));
+            
+            // Notifica outras abas/janelas sobre a mudança
+            localStorage.setItem('radarConfigUpdate', Date.now().toString());
+            
+            // Mostra alert
+            const alert = document.getElementById('alertSaved');
+            alert.classList.add('show');
+            setTimeout(() => alert.classList.remove('show'), 3000);
+
+            // Recarrega radares
+            updateUI();
+            ['radar1', 'radar2'].forEach(key => loadRadar(key));
+            setupAutoRefresh();
+            
+            console.log('✓ Configurações salvas e sincronizadas');
+        }
+
+        // Carrega radar
+        function loadRadar(radarKey) {
+            const iframe = document.getElementById(`iframe-${radarKey}`);
+            const loading = document.getElementById(`loading-${radarKey}`);
+            const error = document.getElementById(`error-${radarKey}`);
+            const status = document.getElementById(`status-${radarKey}`);
+            const timeEl = document.getElementById(`time-${radarKey}`);
+
+            if (!config[radarKey].url) return;
+
+            // Mostra loading
+            loading.style.display = 'flex';
+            error.style.display = 'none';
+            status.innerHTML = '<span class="status-dot loading"></span><span>Carregando...</span>';
+
+            // Limpa retry timer
+            if (retryTimers[radarKey]) {
+                clearTimeout(retryTimers[radarKey]);
+            }
+
+            // Timeout para detectar falha
+            const timeout = setTimeout(() => {
+                loading.style.display = 'none';
+                error.style.display = 'flex';
+                status.innerHTML = '<span class="status-dot offline"></span><span>Offline</span>';
+                
+                // Tenta reconectar após 15s
+                retryTimers[radarKey] = setTimeout(() => {
+                    console.log(`🔁 Tentando reconectar ${radarKey}...`);
+                    loadRadar(radarKey);
+                }, 15000);
+            }, 15000);
+
+            iframe.onload = () => {
+                clearTimeout(timeout);
+                loading.style.display = 'none';
+                error.style.display = 'none';
+                status.innerHTML = '<span class="status-dot online"></span><span>Online</span>';
+                timeEl.textContent = new Date().toLocaleTimeString();
+                console.log(`✓ ${radarKey} carregado`);
+            };
+
+            iframe.onerror = () => {
+                clearTimeout(timeout);
+                loading.style.display = 'none';
+                error.style.display = 'flex';
+                status.innerHTML = '<span class="status-dot offline"></span><span>Offline</span>';
+                
+                // Tenta reconectar após 15s
+                retryTimers[radarKey] = setTimeout(() => {
+                    console.log(`🔁 Tentando reconectar ${radarKey}...`);
+                    loadRadar(radarKey);
+                }, 15000);
+            };
+
+            if (iframe.src !== config[radarKey].url) {
+                iframe.src = config[radarKey].url;
+            } else {
+                try {
+                    iframe.contentWindow?.location.reload();
+                } catch (e) {
+                    iframe.src = config[radarKey].url;
+                }
+            }
+        }
+
+        // Força reload
+        function forceReload(radarKey) {
+            loadRadar(radarKey);
+        }
+
+        // Setup auto-refresh
+        function setupAutoRefresh() {
+            // Limpa timers existentes
+            Object.values(refreshTimers).forEach(timer => clearInterval(timer));
+            refreshTimers = {};
+
+            ['radar1', 'radar2'].forEach(key => {
+                if (config[key].autoRefresh) {
+                    refreshTimers[key] = setInterval(() => {
+                        console.log(`⏰ Auto-refresh ${key}`);
+                        loadRadar(key);
+                    }, config[key].refreshInterval);
+                }
+            });
+        }
+
+        // Abre visualizador em nova aba
+        function openViewerNewTab() {
+            // Pega o diretório base e garante que abre o radar-viewer.html
+            const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            const viewerUrl = baseUrl + 'radar-viewer.html';
+            console.log('Abrindo visualizador:', viewerUrl);
+            window.open(viewerUrl, '_blank');
+        }
+
+        // Abre visualizador em nova janela
+        function openViewerNewWindow() {
+            const width = 1920;
+            const height = 1080;
+            const left = (screen.width - width) / 2;
+            const top = (screen.height - height) / 2;
+            
+            // Pega o diretório base e garante que abre o radar-viewer.html
+            const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            const viewerUrl = baseUrl + 'radar-viewer.html';
+            console.log('Abrindo visualizador em janela:', viewerUrl);
+            
+            window.open(
+                viewerUrl,
+                'RadarViewer',
+                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,status=no,menubar=no,toolbar=no,location=no`
+            );
+        }
+
+        // Inicialização
+        loadConfig();
+        setTimeout(() => {
+            ['radar1', 'radar2'].forEach(key => loadRadar(key));
+            setupAutoRefresh();
+        }, 500);
+    </script>
+</body>
+</html>
