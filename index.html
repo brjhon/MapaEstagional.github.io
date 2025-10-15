@@ -347,6 +347,9 @@
                 <button class="btn btn-primary" onclick="openViewerNewWindow()">
                     🪟 Abrir em Nova Janela
                 </button>
+                <button class="btn btn-success" onclick="copyShareableLink()">
+                    📋 Copiar Link Compartilhável
+                </button>
             </div>
         </div>
 
@@ -390,7 +393,7 @@
                             </button>
                         </div>
                     </div>
-                    <iframe id="iframe-radar1" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
+                    <iframe id="iframe-radar1"></iframe>
                 </div>
                 <div class="preview-footer">
                     <span id="name-radar1">Radar 1</span>
@@ -431,7 +434,7 @@
                             </button>
                         </div>
                     </div>
-                    <iframe id="iframe-radar2" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
+                    <iframe id="iframe-radar2"></iframe>
                 </div>
                 <div class="preview-footer">
                     <span id="name-radar2">Radar 2</span>
@@ -503,6 +506,7 @@
                 <li>Use 🔄 para forçar recarregar um radar</li>
                 <li>Use 🔗 "Abrir em Nova Aba" para abrir o visualizador em outra aba do navegador</li>
                 <li>Use 🪟 "Abrir em Nova Janela" para abrir o visualizador em janela separada</li>
+                <li><strong>Use 📋 "Copiar Link Compartilhável" para gerar um link que funciona em QUALQUER PC/navegador!</strong></li>
                 <li>Quando você clicar em ⚡ ou "Salvar", o visualizador atualiza automaticamente (em 2 segundos)</li>
                 <li>Os radares tentam reconectar automaticamente se ficarem offline</li>
             </ul>
@@ -714,7 +718,17 @@
         function openViewerNewTab() {
             // Pega o diretório base e garante que abre o radar-viewer.html
             const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
-            const viewerUrl = baseUrl + 'radar-viewer.html';
+            
+            // Adiciona configuração do radar ativo na URL
+            const activeConfig = config[config.global.activeRadar];
+            const params = new URLSearchParams({
+                name: activeConfig.name,
+                url: activeConfig.url,
+                autoRefresh: activeConfig.autoRefresh,
+                interval: activeConfig.refreshInterval
+            });
+            
+            const viewerUrl = baseUrl + 'radar-viewer.html?' + params.toString();
             console.log('Abrindo visualizador:', viewerUrl);
             window.open(viewerUrl, '_blank');
         }
@@ -728,7 +742,17 @@
             
             // Pega o diretório base e garante que abre o radar-viewer.html
             const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
-            const viewerUrl = baseUrl + 'radar-viewer.html';
+            
+            // Adiciona configuração do radar ativo na URL
+            const activeConfig = config[config.global.activeRadar];
+            const params = new URLSearchParams({
+                name: activeConfig.name,
+                url: activeConfig.url,
+                autoRefresh: activeConfig.autoRefresh,
+                interval: activeConfig.refreshInterval
+            });
+            
+            const viewerUrl = baseUrl + 'radar-viewer.html?' + params.toString();
             console.log('Abrindo visualizador em janela:', viewerUrl);
             
             window.open(
@@ -736,6 +760,33 @@
                 'RadarViewer',
                 `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,status=no,menubar=no,toolbar=no,location=no`
             );
+        }
+
+        // Copia link compartilhável
+        function copyShareableLink() {
+            const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            
+            // Adiciona configuração do radar ativo na URL
+            const activeConfig = config[config.global.activeRadar];
+            const params = new URLSearchParams({
+                name: activeConfig.name,
+                url: activeConfig.url,
+                autoRefresh: activeConfig.autoRefresh,
+                interval: activeConfig.refreshInterval
+            });
+            
+            const viewerUrl = baseUrl + 'radar-viewer.html?' + params.toString();
+            
+            // Copia para clipboard
+            navigator.clipboard.writeText(viewerUrl).then(() => {
+                const alert = document.getElementById('alertActivated');
+                alert.innerHTML = `📋 Link copiado! Cole em qualquer navegador/PC para ver: ${activeConfig.name}`;
+                alert.classList.add('show');
+                setTimeout(() => alert.classList.remove('show'), 5000);
+                console.log('✓ Link copiado:', viewerUrl);
+            }).catch(err => {
+                alert('Link: ' + viewerUrl);
+            });
         }
 
         // Inicialização
