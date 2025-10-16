@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -55,9 +54,7 @@
         }
 
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
 
         .status-bar {
@@ -101,15 +98,8 @@
         }
 
         @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.3;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
         }
 
         .radar-name {
@@ -231,13 +221,12 @@
         }
     </style>
 </head>
-
 <body>
     <div class="change-flash" id="changeFlash"></div>
-
+    
     <div class="loading" id="loading">
         <div class="loading-spinner"></div>
-        <div>Conectando ao servidor...</div>
+        <div>Conectando ao Firebase...</div>
     </div>
 
     <div class="error-screen" id="errorScreen">
@@ -277,6 +266,14 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 
+        // ⚠️ CREDENCIAIS DO FIREBASE EMBUTIDAS NO CÓDIGO
+        const firebaseConfig = {
+            apiKey: "AIzaSyCpnDf40JQ3COptyNJFZnqj9niTn5iBDeY",
+            authDomain: "coldgend.firebaseapp.com",
+            databaseURL: "https://coldgend-default-rtdb.firebaseio.com",
+            projectId: "coldgend"
+        };
+
         let currentConfig = null;
         let refreshTimer = null;
         let countdownInterval = null;
@@ -293,23 +290,15 @@
         const btnOpenTab = document.getElementById('btnOpenTab');
         const changeFlash = document.getElementById('changeFlash');
 
-        // ⚠️ SUAS CREDENCIAIS HARDCODED
-        const firebaseConfig = {
-            apiKey: "AIzaSyCpnDf40JQ3COptyNJFZnqj9niTn5iBDeY",
-            authDomain: "coldgend.firebaseapp.com",
-            databaseURL: "https://coldgend-default-rtdb.firebaseio.com",
-            projectId: "coldgend"
-        };
+        // Conecta automaticamente ao Firebase
+        initFirebase();
 
-        // Conecta automaticamente
-        initFirebase(firebaseConfig);
-
-        function initFirebase(config) {
+        function initFirebase() {
             try {
-                const app = initializeApp(config);
+                const app = initializeApp(firebaseConfig);
                 const db = getDatabase(app);
                 const configRef = ref(db, 'radarConfig');
-
+                
                 // Escuta mudanças em tempo real
                 onValue(configRef, (snapshot) => {
                     const data = snapshot.val();
@@ -321,29 +310,30 @@
                     console.error('Erro Firebase:', error);
                     updateSyncStatus('offline', 'Erro de conexão');
                 });
-
-                console.log('✓ Firebase conectado - aguardando dados...');
-
+                
+                console.log('✓ Firebase conectado automaticamente - aguardando dados...');
+                
             } catch (error) {
                 console.error('Erro ao conectar Firebase:', error);
                 updateSyncStatus('offline', 'Erro de conexão');
                 radarName.textContent = '❌ Erro ao conectar';
+                loading.style.display = 'none';
             }
         }
 
         function handleConfigUpdate(data) {
             const activeRadar = data.global.activeRadar;
             const radarConfig = data[activeRadar];
-
+            
             // Detecta mudança de radar
             if (currentRadarKey && currentRadarKey !== activeRadar) {
                 console.log(`🔄 Radar alterado: ${currentRadarKey} → ${activeRadar}`);
                 showChangeFlash();
             }
-
+            
             currentRadarKey = activeRadar;
             currentConfig = radarConfig;
-
+            
             loadRadar();
             setupAutoRefresh();
         }
@@ -358,9 +348,9 @@
             radarName.textContent = currentConfig.name;
             loading.style.display = 'block';
             hideError();
-
+            
             console.log(`📡 Carregando: ${radarUrl}`);
-
+            
             let loaded = false;
             const watchdog = setTimeout(() => {
                 if (!loaded) {
@@ -411,7 +401,7 @@
             countdownInterval = setInterval(() => {
                 timeLeft -= 1000;
                 if (timeLeft <= 0) timeLeft = interval;
-
+                
                 const minutes = Math.floor(timeLeft / 60000);
                 const seconds = Math.floor((timeLeft % 60000) / 1000);
                 countdown.textContent = `Próx: ${minutes}:${String(seconds).padStart(2, '0')}`;
@@ -450,8 +440,7 @@
             if (e.key === 'r' || e.key === 'R') loadRadar();
         });
 
-        console.log('🚀 Visualizador iniciado - aguardando configuração do Firebase...');
+        console.log('🚀 Visualizador iniciado - conectando ao Firebase...');
     </script>
 </body>
-
 </html>
