@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar Meteorológico</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            background: #0a0a0a;
+        }
+
+        .iframe-container {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #1a1a1a;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #10b981;
+            font-size: 20px;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(16, 185, 129, 0.1);
+            border-top-color: #10b981;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #9ca3af;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.error {
+            background: #ef4444;
+        }
+
+        .status-indicator.warning {
+            background: #fbbf24;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .radar-name {
+            color: #10b981;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .radar-name::before {
+            content: '📡 ';
+        }
+
+        .sync-badge {
+            padding: 4px 10px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+            border-radius: 6px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sync-badge.offline {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .sync-badge.connecting {
+            background: rgba(251, 191, 36, 0.2);
+            border-color: #fbbf24;
+            color: #fbbf24;
+        }
+
+        .countdown {
+            color: #6b7280;
+        }
+
+        .change-flash {
+            position: fixed;
+            inset: 0;
+            background: rgba(16, 185, 129, 0.4);
+            z-index: 200;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .change-flash.show {
+            opacity: 1;
+        }
+
+        .error-screen {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+
+        .error-screen.show {
+            display: flex;
+        }
+
+        .error-content {
+            text-align: center;
+            max-width: 600px;
+            padding: 40px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #ef4444;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: #ef4444;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+
+        .error-title {
+            color: #ef4444;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+
+        .error-message {
+            color: #9ca3af;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .btn-open {
+            padding: 16px 32px;
+            background: #10b981;
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 8px;
+        }
+
+        .btn-open:hover {
+            background: #34d399;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="change-flash" id="changeFlash"></div>
+    
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div>Conectando ao servidor...</div>
+    </div>
+
+    <div class="error-screen" id="errorScreen">
+        <div class="error-content">
+            <div class="error-icon">🚫</div>
+            <div class="error-title">Radar Bloqueado</div>
+            <div class="error-message">
+                O site do radar está bloqueando o carregamento em iframe (X-Frame-Options).
+                <br><br>
+                Tente abrir em uma nova aba.
+            </div>
+            <button class="btn-open" id="btnOpenTab">
+                🔗 Abrir em Nova Aba
+            </button>
+        </div>
+    </div>
+
+    <div class="iframe-container">
+        <iframe id="radarFrame" title="Radar Meteorológico"></iframe>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-left">
+            <span class="status-indicator" id="statusIndicator"></span>
+            <span class="radar-name" id="radarName">Aguardando configuração...</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="sync-badge connecting" id="syncBadge">
+                <span class="status-indicator" style="width: 6px; height: 6px;"></span>
+                <span id="syncText">Conectando...</span>
+            </div>
+            <div class="countdown" id="countdown"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        let currentConfig = null;
+        let refreshTimer = null;
+        let countdownInterval = null;
+        let currentRadarKey = null;
+
+        const iframe = document.getElementById('radarFrame');
+        const loading = document.getElementById('loading');
+        const radarName = document.getElementById('radarName');
+        const countdown = document.getElementById('countdown');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const syncBadge = document.getElementById('syncBadge');
+        const syncText = document.getElementById('syncText');
+        const errorScreen = document.getElementById('errorScreen');
+        const btnOpenTab = document.getElementById('btnOpenTab');
+        const changeFlash = document.getElementById('changeFlash');
+
+        // Carrega Firebase config
+        const savedFirebaseConfig = localStorage.getItem('firebaseConfig');
+        if (!savedFirebaseConfig) {
+            radarName.textContent = '❌ Firebase não configurado';
+            updateSyncStatus('offline', 'Não configurado');
+            loading.style.display = 'none';
+        } else {
+            const firebaseConfig = JSON.parse(savedFirebaseConfig);
+            initFirebase(firebaseConfig);
+        }
+
+        function initFirebase(config) {
+            try {
+                const app = initializeApp(config);
+                const db = getDatabase(app);
+                const configRef = ref(db, 'radarConfig');
+                
+                // Escuta mudanças em tempo real
+                onValue(configRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        handleConfigUpdate(data);
+                        updateSyncStatus('online', 'Sincronizado ✓');
+                    }
+                }, (error) => {
+                    console.error('Erro Firebase:', error);
+                    updateSyncStatus('offline', 'Erro de conexão');
+                });
+                
+                console.log('✓ Firebase conectado - aguardando dados...');
+                
+            } catch (error) {
+                console.error('Erro ao conectar Firebase:', error);
+                updateSyncStatus('offline', 'Erro de conexão');
+                radarName.textContent = '❌ Erro ao conectar';
+            }
+        }
+
+        function handleConfigUpdate(data) {
+            const activeRadar = data.global.activeRadar;
+            const radarConfig = data[activeRadar];
+            
+            // Detecta mudança de radar
+            if (currentRadarKey && currentRadarKey !== activeRadar) {
+                console.log(`🔄 Radar alterado: ${currentRadarKey} → ${activeRadar}`);
+                showChangeFlash();
+            }
+            
+            currentRadarKey = activeRadar;
+            currentConfig = radarConfig;
+            
+            loadRadar();
+            setupAutoRefresh();
+        }
+
+        function loadRadar() {
+            if (!currentConfig || !currentConfig.url) {
+                radarName.textContent = 'Aguardando configuração...';
+                return;
+            }
+
+            const radarUrl = currentConfig.url.trim();
+            radarName.textContent = currentConfig.name;
+            loading.style.display = 'block';
+            hideError();
+            
+            console.log(`📡 Carregando: ${radarUrl}`);
+            
+            let loaded = false;
+            const watchdog = setTimeout(() => {
+                if (!loaded) {
+                    loading.style.display = 'none';
+                    showError(radarUrl);
+                }
+            }, 7000);
+
+            iframe.onload = () => {
+                loaded = true;
+                clearTimeout(watchdog);
+                loading.style.display = 'none';
+                hideError();
+                statusIndicator.classList.remove('error', 'warning');
+                console.log(`✓ ${currentConfig.name} carregado`);
+            };
+
+            iframe.onerror = () => {
+                loaded = true;
+                clearTimeout(watchdog);
+                loading.style.display = 'none';
+                showError(radarUrl);
+            };
+
+            if (iframe.src !== radarUrl) {
+                iframe.src = radarUrl;
+            } else {
+                try {
+                    iframe.contentWindow?.location.reload();
+                } catch (e) {
+                    iframe.src = radarUrl;
+                }
+            }
+        }
+
+        function setupAutoRefresh() {
+            if (refreshTimer) clearInterval(refreshTimer);
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            if (!currentConfig || !currentConfig.autoRefresh) {
+                countdown.textContent = 'Auto-refresh desativado';
+                return;
+            }
+
+            const interval = currentConfig.refreshInterval;
+            let timeLeft = interval;
+
+            countdownInterval = setInterval(() => {
+                timeLeft -= 1000;
+                if (timeLeft <= 0) timeLeft = interval;
+                
+                const minutes = Math.floor(timeLeft / 60000);
+                const seconds = Math.floor((timeLeft % 60000) / 1000);
+                countdown.textContent = `Próx: ${minutes}:${String(seconds).padStart(2, '0')}`;
+            }, 1000);
+
+            refreshTimer = setInterval(() => {
+                console.log('🔄 Auto-refresh');
+                loadRadar();
+                timeLeft = interval;
+            }, interval);
+        }
+
+        function showError(url) {
+            errorScreen.classList.add('show');
+            statusIndicator.classList.add('error');
+            btnOpenTab.onclick = () => window.open(url, '_blank');
+        }
+
+        function hideError() {
+            errorScreen.classList.remove('show');
+            statusIndicator.classList.remove('error');
+        }
+
+        function showChangeFlash() {
+            changeFlash.classList.add('show');
+            setTimeout(() => changeFlash.classList.remove('show'), 400);
+        }
+
+        function updateSyncStatus(status, text) {
+            syncBadge.className = `sync-badge ${status}`;
+            syncText.textContent = text;
+        }
+
+        // Atalhos de teclado
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') loadRadar();
+        });
+
+        console.log('🚀 Visualizador iniciado - aguardando configuração do Firebase...');
+    </script>
+</body>
+</html>
