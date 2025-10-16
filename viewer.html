@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -54,7 +55,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .status-bar {
@@ -98,8 +101,15 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
         }
 
         .radar-name {
@@ -221,9 +231,10 @@
         }
     </style>
 </head>
+
 <body>
     <div class="change-flash" id="changeFlash"></div>
-    
+
     <div class="loading" id="loading">
         <div class="loading-spinner"></div>
         <div>Conectando ao servidor...</div>
@@ -282,23 +293,23 @@
         const btnOpenTab = document.getElementById('btnOpenTab');
         const changeFlash = document.getElementById('changeFlash');
 
-        // Carrega Firebase config
-        const savedFirebaseConfig = localStorage.getItem('firebaseConfig');
-        if (!savedFirebaseConfig) {
-            radarName.textContent = '❌ Firebase não configurado';
-            updateSyncStatus('offline', 'Não configurado');
-            loading.style.display = 'none';
-        } else {
-            const firebaseConfig = JSON.parse(savedFirebaseConfig);
-            initFirebase(firebaseConfig);
-        }
+        // ⚠️ SUAS CREDENCIAIS HARDCODED
+        const firebaseConfig = {
+            apiKey: "AIzaSyCpnDf40JQ3COptyNJFZnqj9niTn5iBDeY",
+            authDomain: "coldgend.firebaseapp.com",
+            databaseURL: "https://coldgend-default-rtdb.firebaseio.com",
+            projectId: "coldgend"
+        };
+
+        // Conecta automaticamente
+        initFirebase(firebaseConfig);
 
         function initFirebase(config) {
             try {
                 const app = initializeApp(config);
                 const db = getDatabase(app);
                 const configRef = ref(db, 'radarConfig');
-                
+
                 // Escuta mudanças em tempo real
                 onValue(configRef, (snapshot) => {
                     const data = snapshot.val();
@@ -310,9 +321,9 @@
                     console.error('Erro Firebase:', error);
                     updateSyncStatus('offline', 'Erro de conexão');
                 });
-                
+
                 console.log('✓ Firebase conectado - aguardando dados...');
-                
+
             } catch (error) {
                 console.error('Erro ao conectar Firebase:', error);
                 updateSyncStatus('offline', 'Erro de conexão');
@@ -323,16 +334,16 @@
         function handleConfigUpdate(data) {
             const activeRadar = data.global.activeRadar;
             const radarConfig = data[activeRadar];
-            
+
             // Detecta mudança de radar
             if (currentRadarKey && currentRadarKey !== activeRadar) {
                 console.log(`🔄 Radar alterado: ${currentRadarKey} → ${activeRadar}`);
                 showChangeFlash();
             }
-            
+
             currentRadarKey = activeRadar;
             currentConfig = radarConfig;
-            
+
             loadRadar();
             setupAutoRefresh();
         }
@@ -347,9 +358,9 @@
             radarName.textContent = currentConfig.name;
             loading.style.display = 'block';
             hideError();
-            
+
             console.log(`📡 Carregando: ${radarUrl}`);
-            
+
             let loaded = false;
             const watchdog = setTimeout(() => {
                 if (!loaded) {
@@ -400,7 +411,7 @@
             countdownInterval = setInterval(() => {
                 timeLeft -= 1000;
                 if (timeLeft <= 0) timeLeft = interval;
-                
+
                 const minutes = Math.floor(timeLeft / 60000);
                 const seconds = Math.floor((timeLeft % 60000) / 1000);
                 countdown.textContent = `Próx: ${minutes}:${String(seconds).padStart(2, '0')}`;
@@ -442,4 +453,5 @@
         console.log('🚀 Visualizador iniciado - aguardando configuração do Firebase...');
     </script>
 </body>
+
 </html>
